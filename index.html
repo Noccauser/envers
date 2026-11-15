@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="À l'envers">
+<meta name="theme-color" content="#5b3df5">
+<title>À l'envers</title>
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<style>
+  :root{
+    --bg1:#5b3df5; --bg2:#ff5fa2;
+    --rouge:#ff3b5c; --jaune:#ffd23f; --bleu:#3ec7ff; --encre:#1d1442;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    color:#fff;
+    background:linear-gradient(160deg,var(--bg1) 0%,#8a3df0 50%,var(--bg2) 100%);
+    position:fixed;inset:0;
+  }
+  .app{
+    height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:clamp(14px,3.2vh,30px);
+    padding:calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 28px);
+  }
+  h1{margin:0;font-size:clamp(34px,7vh,64px);font-weight:900;letter-spacing:-1px;line-height:1;text-align:center}
+  h1 .miroir{display:inline-block;transform:scaleX(-1);color:var(--jaune)}
+  .aide{margin:0;max-width:440px;text-align:center;font-size:clamp(15px,2.2vh,19px);opacity:.92;line-height:1.35;min-height:2.7em}
+
+  /* Bouton enregistrer */
+  .rec{
+    width:clamp(150px,26vh,230px);height:clamp(150px,26vh,230px);border-radius:50%;
+    border:0;background:var(--rouge);color:#fff;cursor:pointer;
+    box-shadow:0 10px 0 #b8173a,0 18px 40px rgba(0,0,0,.25);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    font:inherit;font-weight:800;font-size:clamp(17px,2.6vh,22px);
+    transition:transform .1s, box-shadow .1s;position:relative;
+  }
+  .rec:active{transform:translateY(6px);box-shadow:0 4px 0 #b8173a,0 10px 24px rgba(0,0,0,.25)}
+  .rec svg{width:38%;height:auto}
+  .rec.enreg{background:#fff;color:var(--rouge);box-shadow:0 10px 0 #d9d2ff,0 18px 40px rgba(0,0,0,.25)}
+  .rec.enreg::before{
+    content:"";position:absolute;inset:-14px;border-radius:50%;border:6px solid #fff;opacity:.7;
+    animation:pulse 1.1s ease-out infinite;
+  }
+  @keyframes pulse{from{transform:scale(.92);opacity:.8}to{transform:scale(1.18);opacity:0}}
+  .chrono{font-variant-numeric:tabular-nums}
+
+  /* Onde */
+  .onde{width:min(92vw,520px);height:clamp(60px,10vh,96px);background:rgba(255,255,255,.14);border-radius:18px;position:relative;overflow:hidden}
+  .onde canvas{width:100%;height:100%;display:block}
+  .onde .vide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;opacity:.75}
+
+  /* Boutons d'écoute */
+  .ecoute{display:flex;flex-direction:column;gap:12px;width:min(92vw,520px)}
+  .btn{
+    border:0;border-radius:22px;cursor:pointer;font:inherit;font-weight:800;
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    transition:transform .1s, box-shadow .1s, opacity .2s;
+  }
+  .btn svg{width:1.15em;height:1.15em;flex:none}
+  .btn.envers{background:var(--jaune);color:var(--encre);font-size:clamp(20px,3vh,26px);padding:clamp(16px,2.6vh,24px) 18px;box-shadow:0 7px 0 #c99b00}
+  .btn.envers:active{transform:translateY(5px);box-shadow:0 2px 0 #c99b00}
+  .btn.endroit{background:rgba(255,255,255,.2);color:#fff;font-size:clamp(16px,2.3vh,19px);padding:clamp(12px,1.8vh,16px) 18px}
+  .btn.endroit:active{transform:scale(.97)}
+  .btn:disabled{opacity:.4;pointer-events:none}
+  .btn.joue{outline:4px solid #fff;outline-offset:3px}
+
+  .version{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom) + 6px);font-size:12px;opacity:.6}
+  .erreur{position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top) + 12px);background:#fff;color:var(--encre);
+    border-radius:16px;padding:14px 16px;font-weight:600;font-size:15px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:none;z-index:5}
+
+  /* Paysage (iPad couché, téléphone couché) */
+  @media (orientation:landscape) and (min-aspect-ratio:4/3){
+    .app{display:grid;grid-template-columns:auto minmax(280px,520px);grid-template-rows:auto auto auto auto;
+      column-gap:clamp(30px,6vw,80px);row-gap:clamp(10px,2.4vh,22px);align-content:center;justify-content:center}
+    h1{grid-column:1/3}
+    .aide{grid-column:1/3;justify-self:center}
+    .rec{grid-column:1;grid-row:3/5;align-self:center;justify-self:center;width:clamp(130px,34vh,240px);height:clamp(130px,34vh,240px)}
+    .onde{grid-column:2;grid-row:3;width:100%}
+    .ecoute{grid-column:2;grid-row:4;width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>À l'<span class="miroir">envers</span></h1>
+  <p class="aide" id="aide">Appuie sur le bouton rouge et dis un mot.</p>
+
+  <button class="rec" id="rec" aria-label="Enregistrer">
+    <svg viewBox="0 0 24 24" fill="currentColor" id="icoRec"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4Zm7-4a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V20H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.08A7 7 0 0 0 19 11Z"/></svg>
+    <span id="recTxt">Enregistrer</span>
+  </button>
+
+  <div class="onde"><canvas id="onde"></canvas><div class="vide" id="ondeVide">Pas encore d'enregistrement</div></div>
+
+  <div class="ecoute">
+    <button class="btn envers" id="btnEnvers" disabled>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 6.5v11a1 1 0 0 1-1.6.8l-7-5.5a1 1 0 0 1 0-1.6l7-5.5A1 1 0 0 1 11 6.5Zm10 0v11a1 1 0 0 1-1.6.8l-7-5.5a1 1 0 0 1 0-1.6l7-5.5A1 1 0 0 1 21 6.5Z"/></svg>
+      <span>Écouter à l'envers</span>
+    </button>
+    <button class="btn endroit" id="btnEndroit" disabled>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 7 5.5Z"/></svg>
+      <span>Écouter normalement</span>
+    </button>
+  </div>
+</div>
+<div class="erreur" id="erreur"></div>
+<div class="version">v1.0</div>
+
+<script>
+(() => {
+  const DUREE_MAX = 15; // secondes
+  const $ = id => document.getElementById(id);
+  const recBtn = $('rec'), recTxt = $('recTxt'), aide = $('aide');
+  const btnEnvers = $('btnEnvers'), btnEndroit = $('btnEndroit');
+  const canvas = $('onde'), ondeVide = $('ondeVide');
+
+  let ctxAudio = null;
+  let enregistreur = null, flux = null, morceaux = [], debut = 0, minuteur = null;
+  let samples = null, sampleRate = 44100;   // enregistrement nettoyé (mono)
+  let urlEndroit = null, urlEnvers = null;
+  const lecteur = new Audio();
+  lecteur.playsInline = true;
+  let sensLecture = null, rafId = null;
+
+  function erreur(msg){
+    const e = $('erreur'); e.textContent = msg; e.style.display = 'block';
+    clearTimeout(erreur.t); erreur.t = setTimeout(() => e.style.display = 'none', 6000);
+  }
+  function getCtx(){
+    if (!ctxAudio) ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+    return ctxAudio;
+  }
+
+  /* ---------- Enregistrement ---------- */
+  function choisirFormat(){
+    if (!window.MediaRecorder) return null;
+    for (const t of ['audio/mp4','audio/webm;codecs=opus','audio/webm','audio/ogg'])
+      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
+    return '';
+  }
+
+  async function demarrer(){
+    stopLecture();
+    const format = choisirFormat();
+    if (format === null || !navigator.mediaDevices?.getUserMedia){
+      erreur("Ce navigateur ne sait pas enregistrer le son. Essaie avec Safari ou Chrome à jour.");
+      return;
+    }
+    try {
+      flux = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    } catch(e){
+      erreur("Micro refusé. Autorise le micro pour ce site (réglages du navigateur), puis réessaie.");
+      return;
+    }
+    morceaux = [];
+    enregistreur = format ? new MediaRecorder(flux, {mimeType:format}) : new MediaRecorder(flux);
+    enregistreur.ondataavailable = e => { if (e.data && e.data.size) morceaux.push(e.data); };
+    enregistreur.onstop = traiter;
+    enregistreur.start();
+    debut = Date.now();
+    recBtn.classList.add('enreg');
+    recBtn.setAttribute('aria-label','Arrêter');
+    $('icoRec').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2.5"/>';
+    majChrono();
+    minuteur = setInterval(majChrono, 200);
+    aide.textContent = "Parle… puis appuie encore pour arrêter.";
+  }
+
+  function majChrono(){
+    const s = (Date.now() - debut) / 1000;
+    recTxt.innerHTML = '<span class="chrono">' + s.toFixed(1).replace('.', ',') + ' s</span>';
+    if (s >= DUREE_MAX) arreter();
+  }
+
+  function arreter(){
+    if (!enregistreur || enregistreur.state === 'inactive') return;
+    clearInterval(minuteur);
+    enregistreur.stop();
+    recBtn.classList.remove('enreg');
+    recBtn.setAttribute('aria-label','Enregistrer');
+    $('icoRec').innerHTML = '<path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4Zm7-4a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V20H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.08A7 7 0 0 0 19 11Z"/>';
+    recTxt.textContent = 'Enregistrer';
+    aide.textContent = "Un instant…";
+  }
+
+  function decoder(arrayBuffer){
+    const ctx = getCtx();
+    return new Promise((ok, ko) => {
+      const p = ctx.decodeAudioData(arrayBuffer, ok, ko);
+      if (p && p.then) p.then(ok, ko);
+    });
+  }
+
+  async function traiter(){
+    // Couper le micro tout de suite (sinon l'iPhone joue le son dans l'écouteur, tout bas)
+    if (flux) flux.getTracks().forEach(t => t.stop());
+    flux = null;
+    try {
+      const blob = new Blob(morceaux, {type: enregistreur.mimeType || 'audio/mp4'});
+      const buf = await decoder(await blob.arrayBuffer());
+      sampleRate = buf.sampleRate;
+      // Mono
+      const mono = new Float32Array(buf.length);
+      for (let c = 0; c < buf.numberOfChannels; c++){
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < d.length; i++) mono[i] += d[i] / buf.numberOfChannels;
+      }
+      const net = nettoyer(mono, sampleRate);
+      if (!net){ aide.textContent = "Je n'ai rien entendu. Parle plus fort et réessaie !"; return; }
+      charger(net, sampleRate);
+      sauver(net, sampleRate);
+      aide.textContent = "Écoute-le à l'envers ! Ensuite, ton pote essaie d'imiter ce qu'il entend…";
+    } catch(e){
+      console.error(e);
+      erreur("Oups, l'enregistrement n'a pas pu être lu. Réessaie.");
+      aide.textContent = "Appuie sur le bouton rouge et dis un mot.";
+    }
+  }
+
+  // Enlève le silence au début et à la fin + monte le volume
+  function nettoyer(d, sr){
+    let max = 0;
+    for (let i = 0; i < d.length; i++){ const a = Math.abs(d[i]); if (a > max) max = a; }
+    if (max < 0.01) return null;
+    const seuil = Math.max(0.02, max * 0.08);
+    const fen = Math.floor(sr * 0.01);
+    let a = 0, b = d.length;
+    const energie = i => { let m = 0; for (let k = i; k < Math.min(i + fen, d.length); k++) m = Math.max(m, Math.abs(d[k])); return m; };
+    for (let i = 0; i < d.length; i += fen) if (energie(i) > seuil){ a = i; break; }
+    for (let i = d.length - fen; i > 0; i -= fen) if (energie(i) > seuil){ b = i + fen; break; }
+    const marge = Math.floor(sr * 0.12);
+    a = Math.max(0, a - marge); b = Math.min(d.length, b + marge);
+    const out = d.slice(a, b);
+    const gain = Math.min(0.95 / max, 6);
+    const fondu = Math.min(Math.floor(sr * 0.01), out.length >> 2);
+    for (let i = 0; i < out.length; i++){
+      let g = gain;
+      if (i < fondu) g *= i / fondu;
+      if (i > out.length - fondu) g *= (out.length - i) / fondu;
+      out[i] *= g;
+    }
+    return out;
+  }
+
+  /* ---------- Préparer les sons ---------- */
+  function wav(d, sr){
+    const n = d.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const s = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    s(0,'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8,'WAVE'); s(12,'fmt ');
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    s(36,'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++){ const x = Math.max(-1, Math.min(1, d[i])); v.setInt16(44 + i*2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+    return new Blob([buf], {type:'audio/wav'});
+  }
+
+  function charger(d, sr){
+    samples = d; sampleRate = sr;
+    if (urlEndroit) URL.revokeObjectURL(urlEndroit);
+    if (urlEnvers) URL.revokeObjectURL(urlEnvers);
+    const inv = d.slice().reverse();
+    urlEndroit = URL.createObjectURL(wav(d, sr));
+    urlEnvers = URL.createObjectURL(wav(inv, sr));
+    btnEnvers.disabled = btnEndroit.disabled = false;
+    ondeVide.style.display = 'none';
+    dessiner();
+  }
+
+  /* ---------- Lecture ---------- */
+  function jouer(sens){
+    if (!samples) return;
+    if (sensLecture === sens && !lecteur.paused){ stopLecture(); return; }
+    stopLecture();
+    sensLecture = sens;
+    lecteur.src = sens === 'envers' ? urlEnvers : urlEndroit;
+    lecteur.currentTime = 0;
+    (sens === 'envers' ? btnEnvers : btnEndroit).classList.add('joue');
+    const p = lecteur.play();
+    if (p && p.catch) p.catch(() => {});
+    boucle();
+  }
+  function stopLecture(){
+    lecteur.pause();
+    sensLecture = null;
+    btnEnvers.classList.remove('joue'); btnEndroit.classList.remove('joue');
+    cancelAnimationFrame(rafId);
+    dessiner();
+  }
+  lecteur.onended = stopLecture;
+  function boucle(){
+    dessiner();
+    if (sensLecture) rafId = requestAnimationFrame(boucle);
+  }
+
+  /* ---------- Onde ---------- */
+  function dessiner(){
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    const c = canvas.getContext('2d'); c.clearRect(0,0,canvas.width,canvas.height);
+    if (!samples) return;
+    const w = canvas.width, h = canvas.height, barres = Math.floor(r.width / 6), pas = Math.floor(samples.length / barres) || 1;
+    const envers = sensLecture === 'envers';
+    const prog = sensLecture && lecteur.duration ? lecteur.currentTime / lecteur.duration : 0;
+    for (let b = 0; b < barres; b++){
+      const src = envers ? barres - 1 - b : b;
+      let m = 0;
+      for (let i = src * pas; i < (src + 1) * pas && i < samples.length; i += 4) m = Math.max(m, Math.abs(samples[i]));
+      const bh = Math.max(3 * dpr, m * h * 0.86), x = (b + 0.5) * (w / barres);
+      c.strokeStyle = sensLecture && (b / barres) < prog ? (envers ? '#ffd23f' : '#3ec7ff') : 'rgba(255,255,255,.85)';
+      c.lineWidth = Math.max(2, (w / barres) * 0.55); c.lineCap = 'round';
+      c.beginPath(); c.moveTo(x, (h - bh) / 2); c.lineTo(x, (h + bh) / 2); c.stroke();
+    }
+  }
+  window.addEventListener('resize', dessiner);
+
+  /* ---------- Garder le dernier son (rafraîchissement) ---------- */
+  function db(){
+    return new Promise((ok, ko) => {
+      const r = indexedDB.open('alenvers', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('sons');
+      r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error);
+    });
+  }
+  async function sauver(d, sr){
+    try { const b = await db(); b.transaction('sons','readwrite').objectStore('sons').put({d, sr}, 'dernier'); } catch(e){}
+  }
+  async function restaurer(){
+    try {
+      const b = await db();
+      const r = b.transaction('sons').objectStore('sons').get('dernier');
+      r.onsuccess = () => { const v = r.result; if (v && v.d && v.d.length){ charger(v.d, v.sr); aide.textContent = "Ton dernier son est prêt. Écoute-le ou enregistre-en un nouveau."; } };
+    } catch(e){}
+  }
+
+  /* ---------- Boutons ---------- */
+  recBtn.addEventListener('click', () => {
+    if (enregistreur && enregistreur.state === 'recording') arreter(); else demarrer();
+  });
+  btnEnvers.addEventListener('click', () => jouer('envers'));
+  btnEndroit.addEventListener('click', () => jouer('endroit'));
+  document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
+  document.addEventListener('visibilitychange', () => { if (document.hidden){ arreter(); stopLecture(); } });
+
+  restaurer();
+})();
+</script>
+</body>
+</html>
